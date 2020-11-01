@@ -1,0 +1,96 @@
+CHAPTER 3 - ETL
+
+#EXTRACT
+Fetch from an API
+In the last video, you've seen that you can extract data from an API by sending a request to the API and parsing the response which was in JSON format. In this exercise, you'll be doing the same by using the requests library to send a request to the Hacker News API.
+
+Hacker News is a social news aggregation website, specifically for articles related to computer science or the tech world in general. Each post on the website has a JSON representation, which you'll see in the response of the request in the exercise.
+
+import requests
+
+# Fetch the Hackernews post
+resp = requests.get("https://hacker-news.firebaseio.com/v0/item/16222426.json")
+
+# Print the response parsed as JSON
+print(resp.json())
+
+# Assign the score of the test to post_score
+post_score = resp.json()['score']
+print(post_score)
+
+
+Read from a database
+In this exercise, you're going to extract data that resides inside tables of a local PostgreSQL database. The data you'll be using is the Pagila example database. The database backs a fictional DVD store application, and educational resources often use it as an example database.
+
+You'll be creating and using a function that extracts a database table into a pandas DataFrame object. The tables you'll be extracting are:
+
+film: the films that are rented out in the DVD store.
+customer: the customers that rented films at the DVD store.
+
+In order to connect to the database, you'll have to use a PostgreSQL connection URI, which looks something like this:
+
+postgresql://[user[:password]@][host][:port][/database]
+
+# Function to extract table to a pandas DataFrame
+def extract_table_to_pandas(tablename, db_engine):
+    query = "SELECT * FROM {}".format(tablename)
+    return pd.read_sql(query, db_engine)
+
+# Connect to the database using the connection URI
+connection_uri = "postgresql://repl:password@localhost:5432/pagila" 
+db_engine = sqlalchemy.create_engine(connection_uri)
+
+# Extract the film table into a pandas DataFrame
+extract_table_to_pandas('film', db_engine)
+
+# Extract the customer table into a pandas DataFrame
+extract_table_to_pandas('customer', db_engine)
+
+The connection URI can also be a link to an external database. Keep in mind that in this case, pulling in full tables can result in loads of network traffic.
+
+#TRANSFORM
+Splitting the rental rate
+In the video exercise, you saw how to use pandas to split the email address column of the film table in order to extract the users' domain names. Suppose you would want to have a better understanding of the rates users pay for movies, so you decided to divide the rental_rate column into dollars and cents.
+
+In this exercise, you will use the same techniques used in the video exercises to do just that! The film table has been loaded into the pandas DataFrame film_df. Remember, the goal is to split up the rental_rate column into dollars and cents.
+
+# Get the rental rate column as a string
+rental_rate_str = film_df.rental_rate.astype(str)
+
+# Split up and expand the column
+rental_rate_expanded = rental_rate_str.str.split(".", expand=True)
+
+# Assign the columns to film_df
+film_df = film_df.assign(
+    rental_rate_dollar=rental_rate_expanded[0],
+    rental_rate_cents=rental_rate_expanded[1],
+)
+
+
+Prepare for transformations
+As mentioned in the video, before you can do transformations using PySpark, you need to get the data into the Spark framework. You saw how to do this using PySpark. Can you choose the correct code?
+spark.read.jdbc("jdbc:postgresql://localhost:5432/pagila",
+                "customer",
+                {"user":"repl","password":"password"})
+
+
+Joining with ratings
+In the video exercise, you saw how to use transformations in PySpark by joining the film and ratings tables to create a new column that stores the average rating per customer. In this exercise, you're going to create more synergies between the film and ratings tables by using the same techniques you learned in the video exercise to calculate the average rating for every film.
+# Use groupBy and mean to aggregate the column
+ratings_per_film_df = rating_df.groupby('film_id').mean('rating')
+
+# Join the tables using the film_id column
+film_df_with_ratings = film_df.join(
+    ratings_per_film_df,
+    film_df.film_id==ratings_per_film_df.film_id
+)
+
+# Show the 5 first results
+print(film_df_with_ratings.show(5))
+
+
+#LOAD
+
+
+
+
